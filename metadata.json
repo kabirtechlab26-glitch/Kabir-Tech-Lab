@@ -1,0 +1,6 @@
+{
+  "name": "Kabir Tech Lab",
+  "description": "Mobile app for Kabir Tech Lab featuring tech tutorials, AI tool guides, Bangla multi-part stories, creator tools, quizzes, community, and AI assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

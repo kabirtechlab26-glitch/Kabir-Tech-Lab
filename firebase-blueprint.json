@@ -1,0 +1,175 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Publicly scoped user profile, XP, streak, preferences, and stats",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the user" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "bio": { "type": "string", "description": "Short user bio" },
+        "language": { "type": "string", "enum": ["bn", "en"], "description": "Selected UI language" },
+        "themeMode": { "type": "string", "enum": ["dark", "light", "system", "amoled"], "description": "Selected theme mode" },
+        "xp": { "type": "integer", "description": "Total experience points" },
+        "streakDays": { "type": "integer", "description": "Consecutive daily check-in streak" },
+        "videosWatched": { "type": "integer", "description": "Count of watched videos" },
+        "quizzesTaken": { "type": "integer", "description": "Count of completed quizzes" },
+        "watchTimeMinutes": { "type": "integer", "description": "Total watch/listen minutes" },
+        "favoriteCategories": { "type": "string", "description": "Comma-separated favorite category keys" },
+        "badges": { "type": "string", "description": "Comma-separated earned badge IDs" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["userId", "displayName", "language", "themeMode", "xp", "streakDays", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Private PII and community join submission owned by the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "fullName": { "type": "string", "description": "Submitted name" },
+        "contact": { "type": "string", "description": "Email or phone contact" },
+        "deviceModel": { "type": "string", "description": "User device model" },
+        "interests": { "type": "string", "description": "Selected interests" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "fullName", "contact", "createdAt", "updatedAt"]
+    },
+    "VideoNote": {
+      "title": "VideoNote",
+      "description": "Timestamped personal note linked to a video or story part",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "videoId": { "type": "string", "description": "YouTube or story video ID" },
+        "videoTitle": { "type": "string", "description": "Title of the video" },
+        "timestampSeconds": { "type": "integer", "description": "Moment in seconds" },
+        "content": { "type": "string", "description": "Note body text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "videoId", "videoTitle", "timestampSeconds", "content", "createdAt", "updatedAt"]
+    },
+    "UserPlaylist": {
+      "title": "UserPlaylist",
+      "description": "Custom user-created playlist",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "name": { "type": "string", "description": "Playlist name" },
+        "videoIds": { "type": "array", "description": "Bounded list of video IDs" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "name", "videoIds", "createdAt", "updatedAt"]
+    },
+    "MediaProgress": {
+      "title": "MediaProgress",
+      "description": "User watch progress, bookmarks, and likes for videos/stories",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID" },
+        "itemId": { "type": "string", "description": "Video or story part ID" },
+        "itemType": { "type": "string", "enum": ["VIDEO", "STORY_PART"], "description": "Item category" },
+        "watchedSeconds": { "type": "integer", "description": "Last watched position in seconds" },
+        "totalSeconds": { "type": "integer", "description": "Total duration in seconds" },
+        "saved": { "type": "boolean", "description": "Bookmarked state" },
+        "liked": { "type": "boolean", "description": "Liked state" },
+        "completed": { "type": "boolean", "description": "Marked watched state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "itemId", "itemType", "watchedSeconds", "totalSeconds", "saved", "liked", "completed", "createdAt", "updatedAt"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "Community feed, Q&A, and project showcase post",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "Author Firebase UID" },
+        "authorName": { "type": "string", "description": "Author display name" },
+        "postType": { "type": "string", "enum": ["FEED", "QA", "SHOWCASE"], "description": "Post category" },
+        "title": { "type": "string", "description": "Post headline" },
+        "body": { "type": "string", "description": "Post content" },
+        "likesCount": { "type": "integer", "description": "Total likes" },
+        "repliesCount": { "type": "integer", "description": "Total replies" },
+        "approved": { "type": "boolean", "description": "Moderation approval state" },
+        "reported": { "type": "boolean", "description": "Flagged for moderation" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["authorId", "authorName", "postType", "title", "body", "likesCount", "repliesCount", "approved", "reported", "createdAt", "updatedAt"]
+    },
+    "VideoRequest": {
+      "title": "VideoRequest",
+      "description": "Audience video topic request with upvotes and status",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Requester UID" },
+        "authorName": { "type": "string", "description": "Requester display name" },
+        "title": { "type": "string", "description": "Requested topic title" },
+        "category": { "type": "string", "description": "Category key" },
+        "description": { "type": "string", "description": "Topic details" },
+        "upvotes": { "type": "integer", "description": "Community upvotes" },
+        "status": { "type": "string", "enum": ["OPEN", "PLANNED", "IN_PROGRESS", "DONE"], "description": "Creator workflow status" },
+        "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"], "description": "Visibility scope" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "authorName", "title", "category", "description", "upvotes", "status", "visibility", "createdAt", "updatedAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Admin-managed pinned announcement or live status",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "Admin UID" },
+        "titleBn": { "type": "string", "description": "Bangla title" },
+        "titleEn": { "type": "string", "description": "English title" },
+        "bodyBn": { "type": "string", "description": "Bangla body" },
+        "bodyEn": { "type": "string", "description": "English body" },
+        "pinned": { "type": "boolean", "description": "Pinned to Home" },
+        "visibility": { "type": "string", "enum": ["PUBLIC", "DRAFT"], "description": "Announcement visibility" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["authorId", "titleBn", "titleEn", "bodyBn", "bodyEn", "pinned", "visibility", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and learning progress"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Isolated user PII and community join form submissions"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/VideoNote" },
+      "description": "User timestamped notes"
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/UserPlaylist" },
+      "description": "Custom user playlists"
+    },
+    "/users/{userId}/progress/{itemId}": {
+      "schema": { "$ref": "#/entities/MediaProgress" },
+      "description": "Watch progress, bookmarks, and likes"
+    },
+    "/community_posts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Approved community feed, Q&A, and showcase posts"
+    },
+    "/video_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/VideoRequest" },
+      "description": "Audience video requests"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Admin announcements"
+    }
+  }
+}

@@ -1,0 +1,304 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Deny all access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        ('email_verified' in request.auth.token && request.auth.token.email_verified == true && 'email' in request.auth.token && request.auth.token.email == "kabirtechlab26@gmail.com") ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- VALIDATION BLUEPRINTS ---
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+             data.language in ['bn', 'en'] &&
+             data.themeMode in ['dark', 'light', 'system', 'amoled'] &&
+             data.xp is int && data.xp >= 0 && data.xp <= 1000000 &&
+             data.streakDays is int && data.streakDays >= 0 && data.streakDays <= 10000 &&
+             (!('videosWatched' in data) || (data.videosWatched is int && data.videosWatched >= 0)) &&
+             (!('quizzesTaken' in data) || (data.quizzesTaken is int && data.quizzesTaken >= 0)) &&
+             (!('watchTimeMinutes' in data) || (data.watchTimeMinutes is int && data.watchTimeMinutes >= 0)) &&
+             (!('favoriteCategories' in data) || (data.favoriteCategories is string && data.favoriteCategories.size() <= 300)) &&
+             (!('badges' in data) || (data.badges is string && data.badges.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+             data.contact is string && data.contact.size() >= 3 && data.contact.size() <= 120 &&
+             (!('deviceModel' in data) || (data.deviceModel is string && data.deviceModel.size() <= 100)) &&
+             (!('interests' in data) || (data.interests is string && data.interests.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidVideoNote(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.videoId is string && data.videoId.size() >= 1 && data.videoId.size() <= 128 &&
+             data.videoTitle is string && data.videoTitle.size() >= 1 && data.videoTitle.size() <= 200 &&
+             data.timestampSeconds is int && data.timestampSeconds >= 0 && data.timestampSeconds <= 86400 &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserPlaylist(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.videoIds is list && data.videoIds.size() <= 50 &&
+             (data.videoIds.size() == 0 || data.videoIds[0] is string) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMediaProgress(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.itemId is string && data.itemId.size() >= 1 && data.itemId.size() <= 128 &&
+             data.itemType in ['VIDEO', 'STORY_PART'] &&
+             data.watchedSeconds is int && data.watchedSeconds >= 0 && data.watchedSeconds <= 86400 &&
+             data.totalSeconds is int && data.totalSeconds >= 0 && data.totalSeconds <= 86400 &&
+             data.saved is bool &&
+             data.liked is bool &&
+             data.completed is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCommunityPost(data) {
+      return data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.postType in ['FEED', 'QA', 'SHOWCASE'] &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 150 &&
+             data.body is string && data.body.size() >= 2 && data.body.size() <= 2000 &&
+             data.likesCount is int && data.likesCount >= 0 && data.likesCount <= 1000000 &&
+             data.repliesCount is int && data.repliesCount >= 0 && data.repliesCount <= 100000 &&
+             data.approved is bool &&
+             data.reported is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidVideoRequest(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+             data.description is string && data.description.size() >= 3 && data.description.size() <= 1000 &&
+             data.upvotes is int && data.upvotes >= 0 && data.upvotes <= 1000000 &&
+             data.status in ['OPEN', 'PLANNED', 'IN_PROGRESS', 'DONE'] &&
+             data.visibility in ['PUBLIC', 'PRIVATE'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.titleBn is string && data.titleBn.size() >= 1 && data.titleBn.size() <= 150 &&
+             data.titleEn is string && data.titleEn.size() >= 1 && data.titleEn.size() <= 150 &&
+             data.bodyBn is string && data.bodyBn.size() >= 1 && data.bodyBn.size() <= 1000 &&
+             data.bodyEn is string && data.bodyEn.size() >= 1 && data.bodyEn.size() <= 1000 &&
+             data.pinned is bool &&
+             data.visibility in ['PUBLIC', 'DRAFT'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- COLLECTIONS ---
+
+    match /admins/{adminUid} {
+      allow get: if isOwner(adminUid) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if (isOwner(userId) && isValidId(userId)) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'language', 'themeMode', 'xp', 'streakDays', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'bio', 'language', 'themeMode', 'xp', 'streakDays', 'videosWatched', 'quizzesTaken', 'watchTimeMinutes', 'favoriteCategories', 'badges', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'language', 'themeMode', 'xp', 'streakDays', 'videosWatched', 'quizzesTaken', 'watchTimeMinutes', 'favoriteCategories', 'badges', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Isolated PII & Join Form Submissions
+      match /private/{docId} {
+        allow get: if (isOwner(userId) && isValidId(docId)) || isAdmin();
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+                         isValidId(docId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'fullName', 'contact', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'fullName', 'contact', 'deviceModel', 'interests', 'createdAt', 'updatedAt']) &&
+                         isValidUserPrivateInfo(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(docId) &&
+                         isValidUserPrivateInfo(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'contact', 'deviceModel', 'interests', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(docId);
+      }
+
+      // Timestamped Video Notes
+      match /notes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'videoId', 'videoTitle', 'timestampSeconds', 'content', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'videoId', 'videoTitle', 'timestampSeconds', 'content', 'createdAt', 'updatedAt']) &&
+                         isValidVideoNote(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         isValidVideoNote(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['content', 'timestampSeconds', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+
+      // Custom User Playlists
+      match /playlists/{playlistId} {
+        allow get: if isOwner(userId) && isValidId(playlistId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(playlistId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'name', 'videoIds', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'videoIds', 'createdAt', 'updatedAt']) &&
+                         isValidUserPlaylist(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(playlistId) &&
+                         isValidUserPlaylist(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'videoIds', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(playlistId);
+      }
+
+      // Watch Progress, Bookmarks, and Likes
+      match /progress/{itemId} {
+        allow get: if isOwner(userId) && isValidId(itemId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'itemId', 'itemType', 'watchedSeconds', 'totalSeconds', 'saved', 'liked', 'completed', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'itemId', 'itemType', 'watchedSeconds', 'totalSeconds', 'saved', 'liked', 'completed', 'createdAt', 'updatedAt']) &&
+                         isValidMediaProgress(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         isValidMediaProgress(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().itemId == existing().itemId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['watchedSeconds', 'totalSeconds', 'saved', 'liked', 'completed', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(itemId);
+      }
+    }
+
+    // Community Posts (Feed, Q&A, Showcase)
+    match /community_posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId) && (existing().approved == true || existing().authorId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().approved == true || existing().authorId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(postId) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().likesCount == 0 &&
+                       incoming().repliesCount == 0 &&
+                       incoming().reported == false &&
+                       incoming().keys().hasAll(['authorId', 'authorName', 'postType', 'title', 'body', 'likesCount', 'repliesCount', 'approved', 'reported', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['authorId', 'authorName', 'postType', 'title', 'body', 'likesCount', 'repliesCount', 'approved', 'reported', 'createdAt', 'updatedAt']) &&
+                       isValidCommunityPost(incoming());
+      allow update: if isSignedIn() && isValidId(postId) && isValidCommunityPost(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'updatedAt'])) ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'updatedAt']) && incoming().likesCount == existing().likesCount + 1) ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['reported', 'updatedAt']) && incoming().reported == true)
+                       );
+      allow delete: if isSignedIn() && isValidId(postId) && (existing().authorId == request.auth.uid || isAdmin());
+    }
+
+    // Video Topic Requests
+    match /video_requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (existing().visibility == 'PUBLIC' || existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().visibility == 'PUBLIC' || existing().userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(requestId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().upvotes == 1 &&
+                       incoming().status == 'OPEN' &&
+                       incoming().keys().hasAll(['userId', 'authorName', 'title', 'category', 'description', 'upvotes', 'status', 'visibility', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'authorName', 'title', 'category', 'description', 'upvotes', 'status', 'visibility', 'createdAt', 'updatedAt']) &&
+                       isValidVideoRequest(incoming());
+      allow update: if isSignedIn() && isValidId(requestId) && isValidVideoRequest(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'updatedAt']) && incoming().upvotes == existing().upvotes + 1)
+                       );
+      allow delete: if isSignedIn() && isValidId(requestId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Announcements (Admin write, Signed-In PUBLIC read)
+    match /announcements/{announcementId} {
+      allow get: if isSignedIn() && isValidId(announcementId) && (existing().visibility == 'PUBLIC' || isAdmin());
+      allow list: if isSignedIn() && (existing().visibility == 'PUBLIC' || isAdmin());
+      allow create: if isAdmin() &&
+                       isValidId(announcementId) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().keys().hasAll(['authorId', 'titleBn', 'titleEn', 'bodyBn', 'bodyEn', 'pinned', 'visibility', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['authorId', 'titleBn', 'titleEn', 'bodyBn', 'bodyEn', 'pinned', 'visibility', 'createdAt', 'updatedAt']) &&
+                       isValidAnnouncement(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(announcementId) &&
+                       isValidAnnouncement(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['titleBn', 'titleEn', 'bodyBn', 'bodyEn', 'pinned', 'visibility', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(announcementId);
+    }
+  }
+}

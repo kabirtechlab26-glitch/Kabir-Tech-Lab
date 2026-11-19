@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-kabirtec-7b161775-3ca7-487a-beb2-88a5bb8c6c56</string>
+    <string name="recaptcha_site_key" translatable="false">6LfkCCcuAAAAAPNCbPXvwGCrWGVxIuu5iBqD-bsC</string>
+</resources>
